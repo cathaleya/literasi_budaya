@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buku Saku Literasi Budaya</title>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow: hidden;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: calc(100vh - 70px);
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .flip-book {
+            box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.2);
+            background-color: white;
+            display: none; /* hidden until initialized */
+        }
+        .page {
+            background-color: white;
+            background-repeat: no-repeat;
+            background-size: 100% 100%;
+            border: solid 1px #e5e7eb;
+            overflow: hidden;
+            box-shadow: inset -1px 0 5px 0 rgba(0, 0, 0, 0.05);
+        }
+        .page.--left {
+            border-right: 0;
+            box-shadow: inset -7px 0 30px -7px rgba(0, 0, 0, 0.2);
+        }
+        .page.--right {
+            border-left: 0;
+            box-shadow: inset 7px 0 30px -7px rgba(0, 0, 0, 0.2);
+        }
+        .page img {
+            width: 100%;
+            height: 100%;
+            object-fit: fill; /* Stretch to fill exactly like PDF */
+        }
+        .controls {
+            height: 70px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            background: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            z-index: 1000;
+        }
+        .btn {
+            background: #be123c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #9f1239;
+            transform: translateY(-2px);
+        }
+        #page-count {
+            background: #fff1f2;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="flip-book" id="flipbook">
+        <!-- Pages will be dynamically injected here -->
+    </div>
+</div>
+
+<div class="controls">
+    <button class="btn" id="btn-prev">⬅ Sebelumnya</button>
+    <div id="page-count">Halaman <span id="current-page">1</span> dari 93</div>
+    <button class="btn" id="btn-next">Selanjutnya ➡️</button>
+</div>
+
+<!-- Menggunakan StPageFlip library via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
+<script>
+    // TUGAS PENTING: Beritahu Streamlit bahwa komponen sudah siap (handshake)
+    function sendMessageToStreamlitClient(type, data) {
+        const outData = Object.assign({
+            isStreamlitMessage: true,
+            type: type,
+        }, data);
+        window.parent.postMessage(outData, "*");
+    }
+
+    // 1. Beritahu Streamlit komponen sudah ready SEGERA agar tidak loading terus
+    sendMessageToStreamlitClient("streamlit:componentReady", {apiVersion: 1});
+    // 2. Atur tinggi iframe awal
+    sendMessageToStreamlitClient("streamlit:setFrameHeight", {height: 800});
+
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            const totalPages = 93;
+            const flipbookEl = document.getElementById('flipbook');
+            
+            let pagesHtml = '';
+            for (let i = 1; i <= totalPages; i++) {
+                pagesHtml += `<div class="page">
+                    <img src="pages/page_${i}.jpg" alt="Page ${i}" loading="lazy">
+                </div>`;
+            }
+            flipbookEl.innerHTML = pagesHtml;
+            flipbookEl.style.display = 'block';
+
+            const pageFlip = new St.PageFlip(flipbookEl, {
+                width: 450, // Base width
+                height: 636, // Base height (A4/B5 proportion)
+                size: "stretch",
+                minWidth: 315,
+                maxWidth: 600,
+                minHeight: 445,
+                maxHeight: 850,
+                maxShadowOpacity: 0.3,
+                showCover: true,
+                mobileScrollSupport: false,
+                usePortrait: true // Memungkinkan tampilan 1 halaman di layar kecil
+            });
+
+            pageFlip.loadFromHTML(document.querySelectorAll('.page'));
+
+            document.getElementById('btn-prev').addEventListener('click', () => {
+                pageFlip.flipPrev();
+            });
+
+            document.getElementById('btn-next').addEventListener('click', () => {
+                pageFlip.flipNext();
+            });
+
+            pageFlip.on('flip', (e) => {
+                let current = e.data + 1;
+                if (pageFlip.getOrientation() === 'landscape' && current > 1 && current < totalPages) {
+                    document.getElementById('current-page').textContent = `${current} - ${current + 1}`;
+                } else {
+                    document.getElementById('current-page').textContent = current;
+                }
+            });
+        } catch (error) {
+            console.error("Flipbook error:", error);
+            document.getElementById('flipbook').innerHTML = "<h3>Gagal memuat flipbook. Pastikan folder 'pages' berisi gambar halaman.</h3>";
+        }
+    });
+</script>
+
+</body>
+</html>
